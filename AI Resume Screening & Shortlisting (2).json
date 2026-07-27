@@ -1,0 +1,1040 @@
+{
+  "name": "AI Resume Screening & Shortlisting",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "documentId": {
+          "__rl": true,
+          "value": "15achbpZFa-gVBs8_HaP61kS9gZxmQGrCe5VOgwE4IXQ",
+          "mode": "list",
+          "cachedResultName": "AI Resume screening",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/15achbpZFa-gVBs8_HaP61kS9gZxmQGrCe5VOgwE4IXQ/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 636456253,
+          "mode": "list",
+          "cachedResultName": "Form Responses 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/15achbpZFa-gVBs8_HaP61kS9gZxmQGrCe5VOgwE4IXQ/edit#gid=636456253"
+        },
+        "includeInOutput": "both",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1264,
+        -16
+      ],
+      "id": "95367bb7-8789-4590-abed-0986e6f8a8ac",
+      "name": "Google Sheets Trigger",
+      "credentials": {
+        "googleSheetsTriggerOAuth2Api": {
+          "id": "DMhFXcBjSYmF2vsi",
+          "name": "Google Sheets Trigger account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.fileId }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        512,
+        96
+      ],
+      "id": "ea292560-ee21-4398-bec1-96c8c0d6cf00",
+      "name": "Download file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "0pIgmsbWEizQOR8H",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        752,
+        80
+      ],
+      "id": "b9b67f47-9e6f-479d-9a7b-d5696ae53f61",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyze this resume for the job role: {{ $('Google Sheets Trigger').item.json['Job Role'] }}\n\nResume:\n{{ $json.text }}\n\nReturn ONLY JSON with:\n- score (0-100)\n- skills\n- strengths\n- weaknesses\n- recommendation (Selected/Rejected)\n- summary\n\nExtract the following information:\n\n1. Overall score (0-100)\n2. Total years of professional experience.\n3. Experience Level.\n4. Technical skills.\n5. Strengths.\n6. Weaknesses.\n7. Recommendation.\n8. Summary.\n\nExperience Rules:\n- Calculate total professional experience from the resume.\n- Do not count education as work experience.\n- If only internships are mentioned, mention them separately and return \"Fresher (0 years)\" unless full-time experience is clearly stated.\n- Experience Level Rules:\n  • 0 years → Fresher\n  • 0–2 years → Junior\n  • 2–5 years → Mid-Level\n  • 5+ years → Senior\n\nReturn ONLY valid JSON matching the schema.",
+        "hasOutputParser": true,
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1136,
+        96
+      ],
+      "id": "0e6760f5-9f73-467c-9dc3-2d5de6e5b61d",
+      "name": "Basic LLM Chain",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        1136,
+        304
+      ],
+      "id": "a8aa99f3-e1e5-46b0-a90a-774854237369",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Bda5oNItOeKj1ZOl",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"score\": 0,\n  \"recommendation\": \"\",\n  \"summary\": \"\",\n  \"skills\": [],\n  \"strengths\": [],\n  \"weaknesses\": [],\n  \"experience\": \"\",\n  \"experience level 1\": \"\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1328,
+        352
+      ],
+      "id": "777f9fb9-9793-48ba-8a88-bd29bf68644d",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5eb48980-3998-434c-bc41-b24ed0b419fb",
+              "leftValue": "={{ $json.output.score }}",
+              "rightValue": 80,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1488,
+        96
+      ],
+      "id": "12f37657-258f-4241-a6d2-5d8cd948f933",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "47d11321-a484-48c1-b2f3-27ccba81fdab",
+              "leftValue": "={{ $json.output.score }}",
+              "rightValue": 60,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1584,
+        320
+      ],
+      "id": "f952c61c-79fd-4065-b4d7-c3b96bc462e5",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "15achbpZFa-gVBs8_HaP61kS9gZxmQGrCe5VOgwE4IXQ",
+          "mode": "list",
+          "cachedResultName": "AI Resume screening",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/15achbpZFa-gVBs8_HaP61kS9gZxmQGrCe5VOgwE4IXQ/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Candidates",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/15achbpZFa-gVBs8_HaP61kS9gZxmQGrCe5VOgwE4IXQ/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Email": "={{ $('Google Sheets Trigger').item.json.current['2. Email Address'] }} ",
+            "Job Role": "={{ $('Google Sheets Trigger').item.json.current['Job Role'] }}",
+            "AI Score": "={{ $('Basic LLM Chain').item.json.output.score }}",
+            "AI Feedback": "={{ $('Basic LLM Chain').item.json.output.summary }}",
+            "Experience": "={{ $('Basic LLM Chain').item.json.output.experience }}",
+            "Status": "Manual Review",
+            "Candidate Name": "={{ $('Google Sheets Trigger').item.json.current['1.Full Name '] }}",
+            "Experience level": "={{ $('Basic LLM Chain').item.json.output['experience level 1'] }}",
+            "Skills": "={{ $('Basic LLM Chain').item.json.output.skills }}",
+            "Applied date": "={{ $now }}",
+            "Resume ": "={{ $('Google Sheets Trigger').item.json.current.Resume }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Candidate Name",
+              "displayName": "Candidate Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Resume ",
+              "displayName": "Resume ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Job Role",
+              "displayName": "Job Role",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "AI Score",
+              "displayName": "AI Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "AI Feedback",
+              "displayName": "AI Feedback",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Experience",
+              "displayName": "Experience",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Experience level",
+              "displayName": "Experience level",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Skills",
+              "displayName": "Skills",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Applied date",
+              "displayName": "Applied date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2192,
+        80
+      ],
+      "id": "548ab674-7531-44b0-8b64-26fa46281ba4",
+      "name": "manual review",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "4CSFnNJMtUXjwLKT",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "15achbpZFa-gVBs8_HaP61kS9gZxmQGrCe5VOgwE4IXQ",
+          "mode": "list",
+          "cachedResultName": "AI Resume screening",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/15achbpZFa-gVBs8_HaP61kS9gZxmQGrCe5VOgwE4IXQ/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Candidates",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/15achbpZFa-gVBs8_HaP61kS9gZxmQGrCe5VOgwE4IXQ/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Email": "={{ $('Google Sheets Trigger').item.json['2. Email Address'] }}",
+            "Resume Link": "={{ $('Google Sheets Trigger').item.json.Resume }}",
+            "Job Role": "={{ $('Google Sheets Trigger').item.json['Job Role'] }}",
+            "AI Score": "={{ $('Basic LLM Chain').item.json.output.score }}",
+            "AI Feedback": "={{ $('Basic LLM Chain').item.json.output.summary }}",
+            "Experience": "={{ $('Basic LLM Chain').item.json.output.experience }}",
+            "Status": "Rejected",
+            "Candidate Name": "={{ $('Google Sheets Trigger').item.json['1.Full Name '] }}",
+            "Experience level": "={{ $('Basic LLM Chain').item.json.output['experience level 1'] }}",
+            "Skills": "={{ $('Basic LLM Chain').item.json.output.skills[0] }}",
+            "Applied date": "={{ $now }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Candidate Name",
+              "displayName": "Candidate Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Resume Link",
+              "displayName": "Resume Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Job Role",
+              "displayName": "Job Role",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "AI Score",
+              "displayName": "AI Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "AI Feedback",
+              "displayName": "AI Feedback",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Experience",
+              "displayName": "Experience",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Experience level",
+              "displayName": "Experience level",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Skills",
+              "displayName": "Skills",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Applied date",
+              "displayName": "Applied date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2000,
+        416
+      ],
+      "id": "0ddcd810-e899-47eb-a214-7259d2340798",
+      "name": "Rejected",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "4CSFnNJMtUXjwLKT",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "15achbpZFa-gVBs8_HaP61kS9gZxmQGrCe5VOgwE4IXQ",
+          "mode": "list",
+          "cachedResultName": "AI Resume screening",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/15achbpZFa-gVBs8_HaP61kS9gZxmQGrCe5VOgwE4IXQ/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Candidates",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/15achbpZFa-gVBs8_HaP61kS9gZxmQGrCe5VOgwE4IXQ/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Email": "={{ $('Google Sheets Trigger').item.json['2. Email Address'] }}",
+            "Resume Link": "={{ $('Google Sheets Trigger').item.json.Resume }}",
+            "Job Role": "={{ $('Google Sheets Trigger').item.json['Job Role'] }}",
+            "AI Score": "={{ $('Basic LLM Chain').item.json.output.score }}",
+            "Status": "Shortlisted",
+            "AI Feedback": "={{ $('Basic LLM Chain').item.json.output.summary }}",
+            "Experience": "={{ $('Basic LLM Chain').item.json.output.experience }}",
+            "Candidate Name": "={{ $('Google Sheets Trigger').item.json['1.Full Name '] }}",
+            "Experience level": "={{ $('Basic LLM Chain').item.json.output['experience level 1'] }}",
+            "Skills": "={{ $('Basic LLM Chain').item.json.output.skills }}",
+            "Applied date": "={{ $now }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Candidate Name",
+              "displayName": "Candidate Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Resume Link",
+              "displayName": "Resume Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Job Role",
+              "displayName": "Job Role",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "AI Score",
+              "displayName": "AI Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "AI Feedback",
+              "displayName": "AI Feedback",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Experience",
+              "displayName": "Experience",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Experience level",
+              "displayName": "Experience level",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Skills",
+              "displayName": "Skills",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Applied date",
+              "displayName": "Applied date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1824,
+        -80
+      ],
+      "id": "b3c85d6f-4946-4346-bbcf-7b6001001125",
+      "name": "Shortlisted",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "4CSFnNJMtUXjwLKT",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Google Sheets Trigger').item.json['2. Email Address'] }}",
+        "subject": "Update on your job application",
+        "emailType": "text",
+        "message": "=Dear {{ $('Google Sheets Trigger').item.json['1.Full Name '] }},  Thank you for applying.  After reviewing your application, we have decided not to move forward at this time.  We appreciate your interest and wish you success in your future career.  Regards, HR Team",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2208,
+        416
+      ],
+      "id": "be03d8e1-71e5-4fd1-8a22-7cc3cadf7dea",
+      "name": "send a rejected messege to client",
+      "webhookId": "676df5b9-0a29-400c-8234-403f397eac7e",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Xvrkpu4DEqJ9RKxi",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Google Sheets Trigger').item.json.current['2. Email Address'] }}",
+        "subject": "Your application is under review",
+        "emailType": "text",
+        "message": "=Dear{{ $('Google Sheets Trigger').item.json.current['2. Email Address'] }} ,  Thank you for your application.  Your profile is currently under manual review by our HR team. We will update you once the review is complete.  Regards, HR Team",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2432,
+        96
+      ],
+      "id": "14c9217d-6638-43e9-a94a-0e9211c32b50",
+      "name": "Send a manual review messege to client",
+      "webhookId": "fca83ab5-7666-4f0b-b0ca-75dd0e825e1f",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Xvrkpu4DEqJ9RKxi",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Google Sheets Trigger').item.json['2. Email Address'] }}",
+        "subject": "Congratulations! Your application has been shortlisted",
+        "emailType": "text",
+        "message": "=D{{ $('Google Sheets Trigger').item.json['1.Full Name '] }}ear ,  Thank you for applying for the{{ $('Google Sheets Trigger').item.json['Job Role'] }} position.  We are pleased to inform you that your application has been shortlisted after our initial screening.  Our HR team will contact you soon regarding the next steps.  Best Regards, HR Team",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1984,
+        -320
+      ],
+      "id": "3596fe38-0190-400e-8501-3543244c371a",
+      "name": "Send a shortlisted messege to client",
+      "webhookId": "2021f65d-aef4-4826-8543-f9117db47137",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Xvrkpu4DEqJ9RKxi",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "sakshi.umu@gmail.com",
+        "subject": "Candidate Requires Manual Review",
+        "emailType": "text",
+        "message": "=Hello HR Team,\n\nA candidate has been flagged for manual review by the AI Resume Screening System.\n\nCandidate Details:\n\nName: {{ $('Google Sheets Trigger').item.json['1.Full Name '] }}\n\nEmail:{{ $('Google Sheets Trigger').item.json['2. Email Address'] }}\nJob Role: {{ $('Google Sheets Trigger').item.json['Job Role'] }}\n\nAI Score:{{ $('Basic LLM Chain').item.json.output.score }} \nExperience: {{ $('Basic LLM Chain').item.json.output.experience }}\nExperience Level: {{ $('Basic LLM Chain').item.json.output['experience level 1'] }}\n\nTechnical Skills:{{ $('Basic LLM Chain').item.json.output.skills }}\n\nAI Summary:{{ $('Basic LLM Chain').item.json.output.summary }}\n\n\nReason:\nThe candidate does not meet the automatic shortlisting threshold but has potential that requires human evaluation.\n\nPlease review the candidate's resume and make the final hiring decision.\n\nRegards,\nAI Resume Screening System",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2656,
+        128
+      ],
+      "id": "cdb21a16-48a1-4758-9575-e75b361dde1b",
+      "name": "send a messege to HR",
+      "webhookId": "aa2e45b2-9bce-4618-8751-79cdceda1128",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Xvrkpu4DEqJ9RKxi",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "sakshi.umu@gmail.com",
+        "subject": "New Candidate Shortlisted",
+        "emailType": "text",
+        "message": "=A new candidate has been shortlisted.  Name:{{ $('Google Sheets Trigger').item.json['1.Full Name '] }}  Email:{{ $('Google Sheets Trigger').item.json['2. Email Address'] }} Job Role: {{ $('Google Sheets Trigger').item.json['Job Role'] }} AI Score:{{ $('Basic LLM Chain').item.json.output.score }}  Experience:{{ $('Basic LLM Chain').item.json.output.experience }}  Experience Level:{{ $('Basic LLM Chain').item.json.output['experience level 1'] }}  Please schedule the interview.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2192,
+        -320
+      ],
+      "id": "47968b5f-874c-4515-a2b0-aebb2e62d687",
+      "name": "Send a messege to HR",
+      "webhookId": "aa2e45b2-9bce-4618-8751-79cdceda1128",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Xvrkpu4DEqJ9RKxi",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "sakshinayan7@gmail.com",
+          "mode": "list",
+          "cachedResultName": "sakshinayan7@gmail.com"
+        },
+        "additionalFields": {
+          "attendees": [
+            "={{ $('If').item.json['Email'] }}"
+          ],
+          "description": "=Candidate: {{ $('If').item.json['Candidate Name'] }}  Email: {{ $('If').item.json['Email'] }}  Role: {{ $('If').item.json['Job Role'] }}  AI Score: {{ $('If').item.json['AI Score'] }}",
+          "summary": "=Interview - {{ $('If').item.json['Candidate Name'] }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        2368,
+        -320
+      ],
+      "id": "3f0805c7-1fb1-4352-86be-995cce9f625c",
+      "name": "Create an event",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "Aqa4caQzLXKtYft8",
+          "name": "Google Calendar OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const url = $json.current.Resume;\n\nif (!url) {\n  throw new Error(\"Resume URL not found\");\n}\n\nconst match = url.match(/id=([^&]+)/);\nconst fileId = match ? match[1] : \"\";\n\nreturn {\n  json: {\n    ...$json.current,\n    fileId,\n  },\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -128,
+        80
+      ],
+      "id": "10d1beae-d4eb-42b0-a439-2b8c227d4996",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Sheets Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Shortlisted",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "manual review",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shortlisted": {
+      "main": [
+        [
+          {
+            "node": "Send a shortlisted messege to client",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "manual review": {
+      "main": [
+        [
+          {
+            "node": "Send a manual review messege to client",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rejected": {
+      "main": [
+        [
+          {
+            "node": "send a rejected messege to client",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a shortlisted messege to client": {
+      "main": [
+        [
+          {
+            "node": "Send a messege to HR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a manual review messege to client": {
+      "main": [
+        [
+          {
+            "node": "send a messege to HR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a messege to HR": {
+      "main": [
+        [
+          {
+            "node": "Create an event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "KKsjnhdqwryIgjxu",
+    "callerPolicy": "workflowsFromSameOwner",
+    "saveDataSuccessExecution": "all"
+  },
+  "versionId": "b4e4d4f0-73be-4d88-9708-72db7ab9b6df",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "21c5619561a0262c9074e9744d7e7eddb668881a32391d72ea7caa552e58bda4"
+  },
+  "nodeGroups": [],
+  "id": "Tmfkh14zQzsHXV9K",
+  "tags": []
+}
