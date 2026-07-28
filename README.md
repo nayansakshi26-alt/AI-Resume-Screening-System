@@ -38,9 +38,11 @@ An AI-powered recruitment automation project built with n8n, Gemini AI, Google S
 ### Google Form
 
 <img width="464" height="781" alt="Screenshot 2026-07-27 220551" src="https://github.com/user-attachments/assets/f6b691c1-3a19-4a25-9d38-33b444981430" />
+
 ### Google Sheets
 
 <img width="1156" height="513" alt="Screenshot 2026-07-27 220904" src="https://github.com/user-attachments/assets/9833d1e6-564f-45f8-9709-6d01f1baa157" />
+
 ### n8n Workflow 
 
 <img width="1843" height="836" alt="Screenshot 2026-07-27 221013" src="https://github.com/user-attachments/assets/a74ed9b6-87ba-495d-8305-3a649d5a18ff" />
